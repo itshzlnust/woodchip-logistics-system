@@ -1,0 +1,46 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Database (SQLite - data aktual, bukan untuk di-commit)
+*.db
+*.sqlite3
+
+# Upload files (foto-foto muatan, tiket, bukti bayar)
+uploads/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.pyc
+
+# Environment variables
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Test artifacts & simulation files
+verify_full_flow.py
+test_api.py
+
+# Dist / Build
+dist/
+build/
+*.egg-info/

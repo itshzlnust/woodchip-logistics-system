@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Surat Jalan Pengiriman Woodchip - {{ shipment.shipment_code }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      body { margin: 0; padding: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 p-4 sm:p-8 flex justify-center text-slate-900 font-sans">
+
+  <div class="bg-white border-2 border-slate-800 rounded-xl p-6 sm:p-8 max-w-xl w-full shadow-lg">
+    
+    <!-- Top Action for Print -->
+    <div class="no-print flex justify-between items-center mb-6 pb-3 border-b border-slate-200">
+      <a href="/shipments/{{ shipment.id }}" class="text-xs font-semibold text-slate-600 hover:text-slate-900">&larr; Kembali ke Detail</a>
+      <button onclick="window.print()" class="px-5 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold shadow hover:bg-slate-800">
+        Cetak Surat Jalan
+      </button>
+    </div>
+
+    <!-- Company Header -->
+    <div class="text-center border-b-2 border-slate-900 pb-3">
+      <h1 class="text-xl font-black uppercase tracking-wider text-slate-900">SURAT JALAN PENGIRIMAN WOODCHIP</h1>
+      <p class="text-xs text-slate-600 mt-0.5">Workshop Pengolahan Kayu &rarr; Pembangkit Listrik Tenaga Uap (PLTU)</p>
+    </div>
+
+    <!-- QR Code Centerpiece for Driver Scanning -->
+    <div class="my-5 p-4 rounded-xl border-2 border-dashed border-slate-400 bg-slate-50 flex items-center justify-between">
+      <div>
+        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Nomor Surat Jalan / Barcode:</span>
+        <div class="text-lg font-black font-mono text-slate-900 mt-0.5">{{ shipment.shipment_code }}</div>
+        <div class="text-xs text-slate-500 mt-1">Tanggal: {{ shipment.created_at }}</div>
+        <div class="mt-2 inline-block px-2 py-0.5 rounded bg-slate-200 text-slate-800 text-[11px] font-bold font-mono">
+          WAJIB SCAN DI WORKSHOP & PLTU
+        </div>
+      </div>
+      {% if shipment.qr_code_path %}
+      <div class="text-center">
+        <img src="{{ shipment.qr_code_path }}" class="w-24 h-24 rounded border border-slate-300 p-1 bg-white mx-auto shadow">
+        <span class="text-[9px] text-slate-500 font-semibold block mt-1">Scan Kamera HP</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Shipment Details Table -->
+    <div class="space-y-2.5 text-xs divide-y divide-slate-100">
+      <div class="flex justify-between py-1.5">
+        <span class="text-slate-500 font-medium">Tujuan PLTU:</span>
+        <span class="font-bold text-slate-900 text-sm">{{ shipment.destination_pltu }}</span>
+      </div>
+      <div class="flex justify-between py-1.5">
+        <span class="text-slate-500 font-medium">Supir / Driver Pengantar:</span>
+        <span class="font-bold text-slate-900 text-sm">{{ shipment.driver_name }}</span>
+      </div>
+      <div class="flex justify-between py-1.5">
+        <span class="text-slate-500 font-medium">Nomor Polisi Truk:</span>
+        <span class="font-mono font-bold text-slate-900 text-sm bg-slate-100 px-2 py-0.5 rounded">{{ shipment.truck_plate }}</span>
+      </div>
+      <div class="flex justify-between py-1.5">
+        <span class="text-slate-500 font-medium">Pemotong Kayu:</span>
+        <span class="font-semibold text-slate-800">{{ shipment.cutter_names or '-' }}</span>
+      </div>
+      <div class="flex justify-between py-1.5">
+        <span class="text-slate-500 font-medium">Operator Mesin:</span>
+        <span class="font-semibold text-slate-800">{{ shipment.operator_names or '-' }}</span>
+      </div>
+      <div class="flex justify-between py-1.5">
+        <span class="text-slate-500 font-medium">Asal Pemasok Kayu:</span>
+        <span class="font-semibold text-slate-800">{{ shipment.supplier_name or 'Stok Workshop' }}</span>
+      </div>
+    </div>
+
+    <!-- Weight Comparison Block -->
+    <div class="my-5 grid grid-cols-2 gap-3 text-xs">
+      
+      <!-- Workshop Weight -->
+      <div class="p-3 rounded-lg border border-slate-300 bg-slate-50">
+        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1">1. Timbang Workshop (Awal)</span>
+        <div class="text-slate-600">Bruto: {{ shipment.departure_gross_kg|num(0) }} kg</div>
+        <div class="text-slate-600">Tara: {{ shipment.departure_tare_kg|num(0) }} kg</div>
+        <div class="font-bold text-slate-900 mt-1 border-t border-slate-200 pt-1">
+          Netto: {{ shipment.departure_net_ton|num }} TON
+        </div>
+      </div>
+
+      <!-- PLTU Weight -->
+      <div class="p-3 rounded-lg border-2 border-slate-800 bg-slate-900 text-white">
+        <span class="text-[10px] font-bold text-emerald-400 uppercase block mb-1">2. Timbang PLTU (Acuan Resmi)</span>
+        <div class="text-slate-300">Bruto: {{ shipment.pltu_gross_kg|num(0) if shipment.pltu_gross_kg else '.....' }} kg</div>
+        <div class="text-slate-300">Tara: {{ shipment.pltu_tare_kg|num(0) if shipment.pltu_tare_kg else '.....' }} kg</div>
+        <div class="font-black text-emerald-400 mt-1 border-t border-slate-700 pt-1 text-sm">
+          Netto: {{ (shipment.pltu_net_ton|num ~ ' TON') if shipment.pltu_net_ton else 'Menunggu Timbang' }}
+        </div>
+      </div>
+
+    </div>
+
+    {% if shipment.departure_notes %}
+    <div class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200 mb-4">
+      <span class="font-bold">Catatan:</span> {{ shipment.departure_notes }}
+    </div>
+    {% endif %}
+
+    <!-- 3 Signatures -->
+    <div class="grid grid-cols-3 gap-3 mt-8 pt-4 text-center text-[11px] text-slate-600">
+      <div>
+        <p>Petugas Workshop,</p>
+        <div class="h-14"></div>
+        <p class="font-bold border-t border-slate-400 pt-1 text-slate-800">( Admin Dispatch )</p>
+      </div>
+      <div>
+        <p>Supir Truk,</p>
+        <div class="h-14"></div>
+        <p class="font-bold border-t border-slate-400 pt-1 text-slate-800">( {{ shipment.driver_name }} )</p>
+      </div>
+      <div>
+        <p>Petugas Timbang PLTU,</p>
+        <div class="h-14"></div>
+        <p class="font-bold border-t border-slate-400 pt-1 text-slate-800">( .............................. )</p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

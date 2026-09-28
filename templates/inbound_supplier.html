@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}Penerimaan Kayu Pemasok (Workshop) &bull; Logistik Woodchip{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <i data-lucide="package-plus" class="w-6 h-6 text-wood-600"></i>
+        Penerimaan Bahan Baku Kayu Pemasok
+      </h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Pencatatan penimbangan kayu masuk di Workshop, identitas bank pemasok, dan antrean pembayaran manual.
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="toggleForm()" class="px-4 py-2.5 bg-gradient-to-r from-wood-600 to-amber-700 hover:from-wood-700 hover:to-amber-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all">
+        <i data-lucide="plus" class="w-4 h-4"></i> Catat Kayu Masuk Baru
+      </button>
+    </div>
+  </div>
+
+  <!-- Form Input Transaksi Baru (Collapsible) -->
+  <div id="form-container" class="bg-white rounded-2xl border border-slate-200 shadow-md p-6 space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-orange-100 text-wood-700 flex items-center justify-center">
+          <i data-lucide="scale" class="w-4 h-4"></i>
+        </div>
+        <h2 class="font-bold text-slate-900 text-sm">Form Timbang & Registrasi Kayu Masuk</h2>
+      </div>
+      <button type="button" onclick="toggleForm()" class="text-slate-400 hover:text-slate-600 text-xs font-semibold">
+        Tutup
+      </button>
+    </div>
+
+    <form action="/inbound/create" method="POST" enctype="multipart/form-data" class="space-y-5">
+      
+      <!-- Section 1: Data Pemasok & Truk -->
+      <div>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">1. Data Pemasok & Armada</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Pilih Pemasok Terdaftar
+            </label>
+            <select id="select-supplier" onchange="fillSupplierDetails()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white">
+              <option value="">-- Input Pemasok Baru --</option>
+              {% for s in suppliers %}
+              <option value="{{ s.id }}" 
+                      data-name="{{ s.name }}" 
+                      data-bank="{{ s.bank_name }}" 
+                      data-acc="{{ s.account_number }}" 
+                      data-holder="{{ s.account_holder }}">
+                {{ s.name }} ({{ s.bank_name }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Nama Pemasok / Pengirim <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" id="input-sup-name" name="supplier_name" required placeholder="Contoh: CV Rimba Abadi" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+            <input type="hidden" id="input-sup-id" name="supplier_id" value="">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              No. Polisi Truk Pemasok <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" name="truck_plate" required placeholder="Contoh: BM 8124 TA" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-mono uppercase">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Nama Supir Pemasok
+            </label>
+            <input type="text" name="driver_name" placeholder="Nama supir pengantar" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Jenis Bahan Baku
+            </label>
+            <select name="material_type" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white">
+              <option value="Kayu Log Akasia">Kayu Log Akasia</option>
+              <option value="Kayu Log Sengon">Kayu Log Sengon</option>
+              <option value="Kayu Log Campur">Kayu Log Campur</option>
+              <option value="Woodchip Curah">Woodchip Curah</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Harga Beli per TON (Rp) <span class="text-rose-500">*</span>
+            </label>
+            <input type="number" id="price-per-ton" name="price_per_ton" value="{{ default_price }}" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-mono">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Penimbangan Timbangan Workshop -->
+      <div class="pt-4 border-t border-slate-100">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">2. Hasil Penimbangan Workshop</h3>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Berat Kotor / Bruto (kg) <span class="text-rose-500">*</span>
+            </label>
+            <input type="number" id="inb-gross" name="gross_weight_kg" required placeholder="Contoh: 18500" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 font-mono font-bold">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Berat Kosong / Tara (kg) <span class="text-rose-500">*</span>
+            </label>
+            <input type="number" id="inb-tare" name="tare_weight_kg" required placeholder="Contoh: 7500" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 font-mono font-bold">
+          </div>
+
+          <!-- Live Output Net TON -->
+          <div class="bg-slate-900 rounded-xl p-3 text-white text-center">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Netto Tonase Bersih</span>
+            <div class="text-xl font-black font-mono text-brand-400 mt-0.5">
+              <span id="display-net-ton">0.000</span> TON
+            </div>
+            <span class="text-[10px] text-slate-400">(<span id="display-net-kg">0</span> kg)</span>
+          </div>
+
+          <!-- Live Output Total Pembayaran -->
+          <div class="bg-gradient-to-br from-wood-800 to-amber-900 rounded-xl p-3 text-white text-center shadow-sm">
+            <span class="text-[10px] text-amber-200 font-bold uppercase">Total Tagihan Dibayarkan</span>
+            <div class="text-lg font-black text-amber-300 mt-0.5" id="display-total-pay">
+              Rp 0
+            </div>
+            <span class="text-[10px] text-amber-200/80">Sesuai Netto TON</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Data Rekening Bank untuk Pembayaran Manual -->
+      <div class="pt-4 border-t border-slate-100 bg-amber-50/50 -mx-6 px-6 py-4 rounded-xl">
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="credit-card" class="w-4 h-4 text-amber-700"></i>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-amber-900">3. Informasi Nomor Rekening Pemasok (Pembayaran Manual)</h3>
+        </div>
+        <p class="text-xs text-slate-600 mb-3">
+          Informasi rekening ini akan digunakan oleh bagian keuangan untuk mentransfer manual tagihan kayu.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Nama Bank <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" id="input-bank-name" name="bank_name" required placeholder="Contoh: BCA / BRI / Mandiri / BNI" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Nomor Rekening <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" id="input-acc-num" name="account_number" required placeholder="Nomor rekening transfer" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-mono bg-white font-bold text-slate-800">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">
+              Atas Nama Rekening <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" id="input-acc-holder" name="account_holder" required placeholder="Nama pemilik rekening sesuai buku tabungan" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: Lampiran Foto & Catatan -->
+      <div class="pt-4 border-t border-slate-100">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">4. Lampiran Bukti Foto</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Foto Muatan Kayu di Truk</label>
+            <input type="file" name="photo_material" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Foto Nota Timbang Workshop</label>
+            <input type="file" name="photo_weighing_ticket" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan</label>
+        <textarea name="notes" rows="2" placeholder="Catatan kondisi kayu, potongan kadar air, dll" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300"></textarea>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="toggleForm()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+          Batal
+        </button>
+        <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-wood-600 to-amber-700 hover:from-wood-700 hover:to-amber-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2">
+          <i data-lucide="check" class="w-4 h-4"></i> Simpan & Buat Tiket Masuk
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Tabel Riwayat Penerimaan Kayu Pemasok -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div class="flex items-center gap-2">
+        <i data-lucide="list-checks" class="w-5 h-5 text-slate-600"></i>
+        <h2 class="font-bold text-slate-900 text-base">Riwayat Transaksi Kayu Masuk</h2>
+      </div>
+      <span class="text-xs text-slate-500 font-medium">{{ transactions|length }} Transaksi Tercatat</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm divide-y divide-slate-100">
+        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+          <tr>
+            <th class="px-5 py-3">Kode / QR</th>
+            <th class="px-4 py-3">Pemasok & Armada</th>
+            <th class="px-4 py-3 text-right">Timbangan (TON)</th>
+            <th class="px-4 py-3 text-right">Total Tagihan</th>
+            <th class="px-4 py-3">Rekening Pembayaran</th>
+            <th class="px-4 py-3 text-center">Status Bayar</th>
+            <th class="px-4 py-3 text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for t in transactions %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            
+            <!-- Kode & QR -->
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-2.5">
+                {% if t.qr_code_path %}
+                <img src="{{ t.qr_code_path }}" class="w-10 h-10 rounded border border-slate-200 p-0.5">
+                {% endif %}
+                <div>
+                  <div class="font-bold font-mono text-slate-900 text-xs">{{ t.transaction_code }}</div>
+                  <div class="text-[11px] text-slate-400">{{ t.created_at }}</div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Pemasok & Armada -->
+            <td class="px-4 py-4">
+              <div class="font-bold text-slate-800">{{ t.supplier_name }}</div>
+              <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                <span class="font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{{ t.truck_plate }}</span>
+                <span>{{ t.material_type }}</span>
+              </div>
+            </td>
+
+            <!-- Timbangan -->
+            <td class="px-4 py-4 text-right">
+              <div class="font-bold text-slate-900">{{ t.net_ton|num }} TON</div>
+              <div class="text-[11px] text-slate-400">
+                B: {{ t.gross_weight_kg|num(0) }} / T: {{ t.tare_weight_kg|num(0) }} kg
+              </div>
+            </td>
+
+            <!-- Tagihan -->
+            <td class="px-4 py-4 text-right">
+              <div class="font-black text-wood-700">{{ t.total_amount|rupiah }}</div>
+              <div class="text-[11px] text-slate-400">@ {{ t.price_per_ton|rupiah }}/TON</div>
+            </td>
+
+            <!-- Rekening Bank -->
+            <td class="px-4 py-4">
+              <div class="text-xs space-y-0.5">
+                <div class="font-bold text-slate-800">{{ t.bank_name }}</div>
+                <div class="flex items-center gap-1.5 font-mono text-slate-700">
+                  <span class="font-semibold">{{ t.account_number }}</span>
+                  <button onclick="copyText('{{ t.account_number }}')" class="text-slate-400 hover:text-brand-600 p-0.5" title="Salin Nomor Rekening">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+                <div class="text-[11px] text-slate-500">a.n. {{ t.account_holder }}</div>
+              </div>
+            </td>
+
+            <!-- Status Bayar -->
+            <td class="px-4 py-4 text-center">
+              {% if t.payment_status == 'PAID' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                  <i data-lucide="check" class="w-3 h-3"></i> Lunas
+                </span>
+                {% if t.payment_reference %}
+                <div class="text-[10px] text-slate-400 font-mono mt-0.5">{{ t.payment_reference }}</div>
+                {% endif %}
+              {% else %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 animate-pulse">
+                  Pending Transfer
+                </span>
+              {% endif %}
+            </td>
+
+            <!-- Aksi -->
+            <td class="px-4 py-4 text-center">
+              <div class="flex items-center justify-center gap-2">
+                <a href="/inbound/{{ t.id }}/ticket" target="_blank" class="p-2 text-slate-500 hover:text-wood-700 hover:bg-wood-50 rounded-lg transition-colors" title="Cetak Tiket Timbang">
+                  <i data-lucide="printer" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </td>
+
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+              Belum ada data kayu masuk dari pemasok.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function toggleForm() {
+    const el = document.getElementById('form-container');
+    el.classList.toggle('hidden');
+    if (!el.classList.contains('hidden')) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
+  function fillSupplierDetails() {
+    const sel = document.getElementById('select-supplier');
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value) {
+      document.getElementById('input-sup-id').value = opt.value;
+      document.getElementById('input-sup-name').value = opt.dataset.name || '';
+      document.getElementById('input-bank-name').value = opt.dataset.bank || '';
+      document.getElementById('input-acc-num').value = opt.dataset.acc || '';
+      document.getElementById('input-acc-holder').value = opt.dataset.holder || '';
+    } else {
+      document.getElementById('input-sup-id').value = '';
+    }
+  }
+
+  // Live calculation of Net Ton & Total Price
+  function calcInbound() {
+    const gross = parseFloat(document.getElementById('inb-gross').value) || 0;
+    const tare = parseFloat(document.getElementById('inb-tare').value) || 0;
+    const pricePerTon = parseFloat(document.getElementById('price-per-ton').value) || 0;
+
+    const netKg = Math.max(0, gross - tare);
+    const netTon = (netKg / 1000);
+    const totalPay = netTon * pricePerTon;
+
+    document.getElementById('display-net-kg').innerText = netKg.toLocaleString('id-ID');
+    document.getElementById('display-net-ton').innerText = netTon.toFixed(3).replace('.', ',');
+    document.getElementById('display-total-pay').innerText = 'Rp ' + Math.round(totalPay).toLocaleString('id-ID');
+  }
+
+  document.getElementById('inb-gross').addEventListener('input', calcInbound);
+  document.getElementById('inb-tare').addEventListener('input', calcInbound);
+  document.getElementById('price-per-ton').addEventListener('input', calcInbound);
+</script>
+{% endblock %}

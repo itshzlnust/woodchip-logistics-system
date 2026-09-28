@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}Keuangan & Pembayaran Manual &bull; Woodchip Logistics{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <i data-lucide="wallet" class="w-6 h-6 text-brand-600"></i>
+        Keuangan & Pembayaran Upah Manual
+      </h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Rincian pembayaran transfer manual untuk Pemotong Kayu, Driver, Operator, dan Pemasok Kayu berdasarkan tonase.
+      </p>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-2xl p-5 border border-rose-200 bg-rose-50/20 shadow-sm">
+      <span class="text-xs font-bold uppercase tracking-wider text-rose-700 block">Upah Pekerja Pending</span>
+      <div class="text-2xl font-black text-rose-600 mt-1">{{ total_pending_wages|rupiah }}</div>
+      <span class="text-[11px] text-slate-500 mt-1 block">Pemotong, Driver & Operator</span>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-orange-200 bg-orange-50/20 shadow-sm">
+      <span class="text-xs font-bold uppercase tracking-wider text-wood-700 block">Tagihan Pemasok Pending</span>
+      <div class="text-2xl font-black text-wood-600 mt-1">{{ total_pending_suppliers|rupiah }}</div>
+      <span class="text-[11px] text-slate-500 mt-1 block">Bahan Baku Kayu Masuk</span>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-emerald-200 bg-emerald-50/20 shadow-sm">
+      <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 block">Upah Pekerja Lunas</span>
+      <div class="text-2xl font-black text-emerald-700 mt-1">{{ total_paid_wages|rupiah }}</div>
+      <span class="text-[11px] text-slate-500 mt-1 block">Telah ditransfer</span>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-500 block">Tagihan Pemasok Lunas</span>
+      <div class="text-2xl font-black text-slate-800 mt-1">{{ total_paid_suppliers|rupiah }}</div>
+      <span class="text-[11px] text-slate-500 mt-1 block">Telah ditransfer</span>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs & Filter -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+      
+      <!-- Tabs -->
+      <div class="flex items-center gap-2">
+        <a href="/finance?tab=wages&status_filter={{ status_filter }}" class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 {% if active_tab == 'wages' %}bg-slate-900 text-white shadow{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+          <i data-lucide="users" class="w-4 h-4"></i> Upah Pekerja (PLTU)
+        </a>
+        <a href="/finance?tab=suppliers&status_filter={{ status_filter }}" class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 {% if active_tab == 'suppliers' %}bg-slate-900 text-white shadow{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+          <i data-lucide="package" class="w-4 h-4"></i> Pembelian Kayu Pemasok
+        </a>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-slate-500 font-semibold">Filter Status:</span>
+        <a href="/finance?tab={{ active_tab }}&status_filter=ALL" class="px-2.5 py-1 rounded-lg font-bold {% if status_filter == 'ALL' %}bg-brand-600 text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+          Semua
+        </a>
+        <a href="/finance?tab={{ active_tab }}&status_filter=PENDING" class="px-2.5 py-1 rounded-lg font-bold {% if status_filter == 'PENDING' %}bg-rose-600 text-white{% else %}text-rose-600 hover:bg-rose-50{% endif %}">
+          Pending Transfer
+        </a>
+        <a href="/finance?tab={{ active_tab }}&status_filter=PAID" class="px-2.5 py-1 rounded-lg font-bold {% if status_filter == 'PAID' %}bg-emerald-600 text-white{% else %}text-emerald-600 hover:bg-emerald-50{% endif %}">
+          Lunas
+        </a>
+      </div>
+
+    </div>
+
+    <!-- TAB 1: UPAH PEKERJA BERDASARKAN TONASE PLTU -->
+    {% if active_tab == 'wages' %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm divide-y divide-slate-100">
+        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+          <tr>
+            <th class="px-4 py-3">Pekerja & Peran</th>
+            <th class="px-4 py-3">Surat Jalan / Truk</th>
+            <th class="px-4 py-3 text-right">Tonase PLTU</th>
+            <th class="px-4 py-3 text-right">Jumlah Upah</th>
+            <th class="px-5 py-3">Rekening Bank (Tujuan Transfer)</th>
+            <th class="px-4 py-3 text-center">Status</th>
+            <th class="px-4 py-3 text-center">Aksi Transfer</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for r in wage_records %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            
+            <!-- Pekerja & Peran -->
+            <td class="px-4 py-3.5">
+              <div class="font-bold text-slate-900 text-xs">{{ r.recipient_name }}</div>
+              <div class="mt-0.5">
+                {% if r.role == 'pemotong' %}
+                  <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold uppercase text-[10px]">Pemotong Kayu</span>
+                {% elif r.role == 'driver' %}
+                  <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold uppercase text-[10px]">Driver Truk</span>
+                {% elif r.role == 'operator' %}
+                  <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold uppercase text-[10px]">Operator Mesin</span>
+                {% else %}
+                  <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">{{ r.role }}</span>
+                {% endif %}
+              </div>
+            </td>
+
+            <!-- Surat Jalan & Truk -->
+            <td class="px-4 py-3.5 text-xs">
+              <a href="/shipments/{{ r.shipment_id }}" class="font-bold font-mono text-brand-700 hover:underline block">
+                {{ r.shipment_code }}
+              </a>
+              <span class="font-mono text-slate-500 text-[11px]">{{ r.truck_plate }}</span>
+            </td>
+
+            <!-- Tonase PLTU -->
+            <td class="px-4 py-3.5 text-right">
+              <div class="font-bold text-slate-900 text-xs">{{ r.ton_basis|num }} TON</div>
+              <div class="text-[10px] text-slate-400">@ {{ r.rate_per_ton|rupiah }}</div>
+            </td>
+
+            <!-- Jumlah Upah -->
+            <td class="px-4 py-3.5 text-right">
+              <div class="font-black text-slate-900 text-sm font-mono">{{ r.amount_due|rupiah }}</div>
+            </td>
+
+            <!-- Rekening Bank (Tujuan Transfer Manual) -->
+            <td class="px-5 py-3.5">
+              <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-slate-800">{{ r.bank_name }}</span>
+                  <button onclick="copyText('{{ r.account_number }}')" class="px-2 py-0.5 bg-white hover:bg-brand-50 border border-slate-300 hover:border-brand-500 rounded text-[11px] text-brand-700 font-bold flex items-center gap-1 transition-all" title="Salin Nomor Rekening">
+                    <i data-lucide="copy" class="w-3 h-3"></i> Salin
+                  </button>
+                </div>
+                <div class="font-mono font-black text-slate-900 text-sm">{{ r.account_number }}</div>
+                <div class="text-[11px] text-slate-500">a.n. <strong>{{ r.account_holder }}</strong></div>
+              </div>
+            </td>
+
+            <!-- Status -->
+            <td class="px-4 py-3.5 text-center">
+              {% if r.payment_status == 'PAID' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                  <i data-lucide="check" class="w-3 h-3"></i> Lunas
+                </span>
+                <div class="text-[10px] text-slate-400 mt-0.5">{{ r.payment_date }}</div>
+              {% else %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 animate-pulse">
+                  Pending Transfer
+                </span>
+              {% endif %}
+            </td>
+
+            <!-- Aksi Transfer Manual -->
+            <td class="px-4 py-3.5 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                {% if r.payment_status != 'PAID' %}
+                <button onclick="openWageSettleModal('{{ r.id }}', '{{ r.recipient_name }}', '{{ r.amount_due|rupiah }}', '{{ r.bank_name }}', '{{ r.account_number }}', '{{ r.account_holder }}')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-lg shadow transition-all flex items-center gap-1">
+                  <i data-lucide="send" class="w-3.5 h-3.5"></i> Bayar
+                </button>
+                {% else %}
+                <a href="/finance/slip/{{ r.id }}" target="_blank" class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="Cetak Slip Upah">
+                  <i data-lucide="printer" class="w-4 h-4"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+              Tidak ada data upah pekerja yang cocok dengan filter.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- TAB 2: PEMBELIAN KAYU PEMASOK (WORKSHOP INBOUND) -->
+    {% if active_tab == 'suppliers' %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm divide-y divide-slate-100">
+        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+          <tr>
+            <th class="px-4 py-3">Kode Transaksi</th>
+            <th class="px-4 py-3">Pemasok & Armada</th>
+            <th class="px-4 py-3 text-right">Tonase Bersih</th>
+            <th class="px-4 py-3 text-right">Total Tagihan</th>
+            <th class="px-5 py-3">Rekening Bank Pemasok</th>
+            <th class="px-4 py-3 text-center">Status</th>
+            <th class="px-4 py-3 text-center">Aksi Transfer</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for inb in inbound_records %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="px-4 py-3.5">
+              <span class="font-mono font-bold text-xs text-slate-900 block">{{ inb.transaction_code }}</span>
+              <span class="text-[11px] text-slate-400">{{ inb.created_at }}</span>
+            </td>
+            <td class="px-4 py-3.5">
+              <div class="font-bold text-slate-800 text-xs">{{ inb.supplier_name }}</div>
+              <span class="font-mono text-slate-500 text-[11px]">{{ inb.truck_plate }} &bull; {{ inb.material_type }}</span>
+            </td>
+            <td class="px-4 py-3.5 text-right">
+              <div class="font-bold text-slate-900 text-xs">{{ inb.net_ton|num }} TON</div>
+              <div class="text-[10px] text-slate-400">@ {{ inb.price_per_ton|rupiah }}</div>
+            </td>
+            <td class="px-4 py-3.5 text-right">
+              <div class="font-black text-wood-700 text-sm font-mono">{{ inb.total_amount|rupiah }}</div>
+            </td>
+            <td class="px-5 py-3.5">
+              <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-slate-800">{{ inb.bank_name }}</span>
+                  <button onclick="copyText('{{ inb.account_number }}')" class="px-2 py-0.5 bg-white hover:bg-wood-50 border border-slate-300 hover:border-wood-500 rounded text-[11px] text-wood-700 font-bold flex items-center gap-1 transition-all" title="Salin Nomor Rekening">
+                    <i data-lucide="copy" class="w-3 h-3"></i> Salin
+                  </button>
+                </div>
+                <div class="font-mono font-black text-slate-900 text-sm">{{ inb.account_number }}</div>
+                <div class="text-[11px] text-slate-500">a.n. <strong>{{ inb.account_holder }}</strong></div>
+              </div>
+            </td>
+            <td class="px-4 py-3.5 text-center">
+              {% if inb.payment_status == 'PAID' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                  <i data-lucide="check" class="w-3 h-3"></i> Lunas
+                </span>
+                <div class="text-[10px] text-slate-400 mt-0.5">{{ inb.payment_date }}</div>
+              {% else %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 animate-pulse">
+                  Pending Transfer
+                </span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3.5 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                {% if inb.payment_status != 'PAID' %}
+                <button onclick="openInboundSettleModal('{{ inb.id }}', '{{ inb.supplier_name }}', '{{ inb.total_amount|rupiah }}', '{{ inb.bank_name }}', '{{ inb.account_number }}', '{{ inb.account_holder }}')" class="px-3 py-1.5 bg-wood-600 hover:bg-wood-700 text-white font-bold text-xs rounded-lg shadow transition-all flex items-center gap-1">
+                  <i data-lucide="send" class="w-3.5 h-3.5"></i> Bayar
+                </button>
+                {% else %}
+                <a href="/inbound/{{ inb.id }}/ticket" target="_blank" class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="Cetak Nota">
+                  <i data-lucide="printer" class="w-4 h-4"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+              Tidak ada data tagihan pemasok yang cocok dengan filter.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+
+<!-- Modal Konfirmasi Transfer Manual Upah Pekerja -->
+<div id="modal-settle-wage" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+        <i data-lucide="credit-card" class="w-4 h-4 text-brand-600"></i>
+        Konfirmasi Transfer Manual Upah
+      </h3>
+      <button onclick="closeWageModal()" class="text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+
+    <!-- Rekening Preview Box -->
+    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-1.5">
+      <div class="text-slate-500">Penerima Upah: <strong id="m-wage-name" class="text-slate-800"></strong></div>
+      <div class="text-slate-500">Jumlah Transfer: <strong id="m-wage-amount" class="text-brand-700 text-base font-black font-mono"></strong></div>
+      <div class="border-t border-slate-200 pt-1.5 mt-1.5 flex items-center justify-between">
+        <div>
+          <span class="text-slate-500 block text-[10px]">Tujuan Bank:</span>
+          <span id="m-wage-bank" class="font-bold text-slate-900 text-sm"></span>
+        </div>
+        <button id="btn-copy-modal-acc" class="px-2.5 py-1 bg-white border border-brand-500 text-brand-700 font-bold text-xs rounded-lg flex items-center gap-1 shadow-sm">
+          <i data-lucide="copy" class="w-3 h-3"></i> Salin Rekening
+        </button>
+      </div>
+      <div class="text-slate-500 text-[11px]">a.n. <span id="m-wage-holder" class="font-semibold text-slate-700"></span></div>
+    </div>
+
+    <form id="form-settle-wage" method="POST" enctype="multipart/form-data" class="space-y-3 text-xs">
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Nomor Referensi Transfer Bank <span class="text-rose-500">*</span></label>
+        <input type="text" name="payment_reference" required placeholder="Contoh: TRF-BCA-82910283" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono">
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Tanggal Transfer <span class="text-rose-500">*</span></label>
+        <input type="datetime-local" id="m-wage-date" name="payment_date" required class="w-full px-3 py-2 rounded-lg border border-slate-300">
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Upload Bukti Transfer / Resi (Opsional)</label>
+        <input type="file" name="payment_proof" accept="image/*" class="w-full text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:font-semibold">
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Catatan Tambahan</label>
+        <input type="text" name="notes" placeholder="Transfer via m-BCA kasir" class="w-full px-3 py-2 rounded-lg border border-slate-300">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeWageModal()" class="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-lg">Batal</button>
+        <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg shadow">Tandai Lunas</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Konfirmasi Transfer Manual Pemasok -->
+<div id="modal-settle-inbound" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+        <i data-lucide="credit-card" class="w-4 h-4 text-wood-600"></i>
+        Konfirmasi Transfer Pembelian Kayu Pemasok
+      </h3>
+      <button onclick="closeInboundModal()" class="text-slate-400 hover:text-slate-600">&times;</button>
+    </div>
+
+    <!-- Rekening Preview Box -->
+    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-1.5">
+      <div class="text-slate-500">Pemasok: <strong id="m-inb-name" class="text-slate-800"></strong></div>
+      <div class="text-slate-500">Jumlah Tagihan: <strong id="m-inb-amount" class="text-wood-700 text-base font-black font-mono"></strong></div>
+      <div class="border-t border-slate-200 pt-1.5 mt-1.5 flex items-center justify-between">
+        <div>
+          <span class="text-slate-500 block text-[10px]">Tujuan Bank:</span>
+          <span id="m-inb-bank" class="font-bold text-slate-900 text-sm"></span>
+        </div>
+        <button id="btn-copy-modal-inb-acc" class="px-2.5 py-1 bg-white border border-wood-500 text-wood-700 font-bold text-xs rounded-lg flex items-center gap-1 shadow-sm">
+          <i data-lucide="copy" class="w-3 h-3"></i> Salin Rekening
+        </button>
+      </div>
+      <div class="text-slate-500 text-[11px]">a.n. <span id="m-inb-holder" class="font-semibold text-slate-700"></span></div>
+    </div>
+
+    <form id="form-settle-inbound" method="POST" enctype="multipart/form-data" class="space-y-3 text-xs">
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Nomor Referensi Transfer Bank <span class="text-rose-500">*</span></label>
+        <input type="text" name="payment_reference" required placeholder="Contoh: TRF-MDR-92817263" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono">
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Tanggal Transfer <span class="text-rose-500">*</span></label>
+        <input type="datetime-local" id="m-inb-date" name="payment_date" required class="w-full px-3 py-2 rounded-lg border border-slate-300">
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Upload Bukti Transfer / Resi (Opsional)</label>
+        <input type="file" name="payment_proof" accept="image/*" class="w-full text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 file:font-semibold">
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Catatan Tambahan</label>
+        <input type="text" name="notes" placeholder="Transfer pembayaran lunas nota workshop" class="w-full px-3 py-2 rounded-lg border border-slate-300">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeInboundModal()" class="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-lg">Batal</button>
+        <button type="submit" class="px-5 py-2 bg-wood-600 hover:bg-wood-700 text-white font-bold rounded-lg shadow">Tandai Lunas</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function formatCurrentDateTime() {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  }
+
+  // Modal Wage
+  function openWageSettleModal(id, name, amount, bank, acc, holder) {
+    document.getElementById('m-wage-name').innerText = name;
+    document.getElementById('m-wage-amount').innerText = amount;
+    document.getElementById('m-wage-bank').innerText = bank + ": " + acc;
+    document.getElementById('m-wage-holder').innerText = holder;
+    document.getElementById('m-wage-date').value = formatCurrentDateTime();
+    document.getElementById('form-settle-wage').action = `/finance/settle-wage/${id}`;
+    
+    document.getElementById('btn-copy-modal-acc').onclick = () => copyText(acc);
+    document.getElementById('modal-settle-wage').classList.remove('hidden');
+    lucide.createIcons();
+  }
+
+  function closeWageModal() {
+    document.getElementById('modal-settle-wage').classList.add('hidden');
+  }
+
+  // Modal Inbound
+  function openInboundSettleModal(id, name, amount, bank, acc, holder) {
+    document.getElementById('m-inb-name').innerText = name;
+    document.getElementById('m-inb-amount').innerText = amount;
+    document.getElementById('m-inb-bank').innerText = bank + ": " + acc;
+    document.getElementById('m-inb-holder').innerText = holder;
+    document.getElementById('m-inb-date').value = formatCurrentDateTime();
+    document.getElementById('form-settle-inbound').action = `/finance/settle-inbound/${id}`;
+
+    document.getElementById('btn-copy-modal-inb-acc').onclick = () => copyText(acc);
+    document.getElementById('modal-settle-inbound').classList.remove('hidden');
+    lucide.createIcons();
+  }
+
+  function closeInboundModal() {
+    document.getElementById('modal-settle-inbound').classList.add('hidden');
+  }
+</script>
+{% endblock %}

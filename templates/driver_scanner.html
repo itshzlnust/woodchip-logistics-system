@@ -1,0 +1,576 @@
+{% extends "base.html" %}
+
+{% block title %}Scanner QR & Barcode Driver &bull; Logistik Woodchip{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto space-y-5">
+
+  <!-- Header Card -->
+  <div class="bg-gradient-to-r from-emerald-900 to-slate-900 rounded-2xl p-5 text-white shadow-lg flex items-center justify-between">
+    <div>
+      <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold uppercase tracking-wider mb-1 border border-emerald-500/30">
+        <i data-lucide="smartphone" class="w-3.5 h-3.5"></i> Portal Driver Lapangan
+      </div>
+      <h1 class="text-xl font-black">Pemindai QR Surat Jalan</h1>
+      <p class="text-xs text-slate-300 mt-0.5">Scan keberangkatan workshop & kedatangan timbang PLTU</p>
+    </div>
+    <div class="w-12 h-12 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center border border-brand-500/30">
+      <i data-lucide="qr-code" class="w-7 h-7"></i>
+    </div>
+  </div>
+
+  <!-- QR Scanner Camera Card -->
+  <div id="scanner-box" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-brand-500 animate-ping"></span>
+        <h2 class="font-bold text-slate-800 text-sm">Kamera Pemindai Langsung</h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-toggle-camera" class="px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center gap-1">
+          <i data-lucide="refresh-cw" class="w-3 h-3"></i> Ganti Kamera
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Camera Viewport -->
+    <div class="relative bg-slate-950 rounded-xl overflow-hidden min-h-[260px] flex items-center justify-center border-2 border-dashed border-slate-700">
+      <div id="qr-reader" class="w-full"></div>
+      <div id="scanner-placeholder" class="text-center p-6 space-y-3">
+        <div class="w-14 h-14 mx-auto rounded-full bg-slate-800/80 text-brand-400 flex items-center justify-center border border-slate-700 shadow-inner">
+          <i data-lucide="camera" class="w-7 h-7"></i>
+        </div>
+        <p class="text-xs text-slate-400 max-w-xs">
+          Izinkan akses kamera browser untuk memindai QR barcode Surat Jalan secara otomatis.
+        </p>
+        <button id="btn-start-scanner" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-md transition-all">
+          Nyalakan Kamera Sekarang
+        </button>
+      </div>
+    </div>
+
+    <!-- Alternative: Scan from image file or manual input -->
+    <div class="pt-3 border-t border-slate-100 space-y-2">
+      <div class="flex items-center justify-between text-xs text-slate-500 font-medium">
+        <span>Atau masukkan kode Surat Jalan manual:</span>
+        <label for="qr-file-input" class="text-brand-600 hover:underline cursor-pointer font-bold flex items-center gap-1">
+          <i data-lucide="image" class="w-3.5 h-3.5"></i> Scan dari Foto
+        </label>
+        <input type="file" id="qr-file-input" accept="image/*" class="hidden">
+      </div>
+
+      <div class="flex gap-2">
+        <div class="relative flex-1">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+          <input type="text" id="manual-code-input" value="{{ initial_code }}" placeholder="Contoh: SJ-PLTU-20260918-001" class="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono uppercase">
+        </div>
+        <button id="btn-lookup-manual" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors">
+          Cek
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div id="loading-spinner" class="hidden bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-3">
+    <div class="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+    <div class="text-sm font-bold text-slate-700">Mencari Data Surat Jalan...</div>
+  </div>
+
+  <!-- Shipment Details & Action Wizard Container -->
+  <div id="shipment-action-card" class="{% if not shipment %}hidden{% endif %} bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden transition-all">
+    
+    <!-- Top Status Header -->
+    <div id="card-header-bar" class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+      <div>
+        <div class="text-xs text-brand-300 font-bold uppercase tracking-wider">Surat Jalan Terverifikasi</div>
+        <div id="display-sj-code" class="text-lg font-black font-mono mt-0.5">
+          {{ shipment.shipment_code if shipment else '' }}
+        </div>
+      </div>
+      <div id="display-status-badge">
+        {% if shipment %}
+          {% if shipment.status == 'DRAFT' %}
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-200 border border-slate-600">
+              Siap Muat
+            </span>
+          {% elif shipment.status == 'IN_TRANSIT' %}
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white animate-pulse">
+              Di Jalan ke PLTU
+            </span>
+          {% else %}
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white">
+              Selesai / Tiba
+            </span>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Summary Info Box -->
+    <div class="p-5 bg-slate-50 border-b border-slate-200/80 text-xs space-y-2">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <span class="text-slate-400 block">Driver:</span>
+          <span id="display-driver-name" class="font-bold text-slate-800 text-sm">
+            {{ shipment.driver_name if shipment else '' }}
+          </span>
+        </div>
+        <div>
+          <span class="text-slate-400 block">No. Polisi Truk:</span>
+          <span id="display-truck-plate" class="font-bold font-mono text-slate-800 text-sm bg-white px-2 py-0.5 rounded border border-slate-200 inline-block">
+            {{ shipment.truck_plate if shipment else '' }}
+          </span>
+        </div>
+        <div>
+          <span class="text-slate-400 block">Tujuan PLTU:</span>
+          <span id="display-destination" class="font-semibold text-slate-700">
+            {{ shipment.destination_pltu if shipment else '' }}
+          </span>
+        </div>
+        <div>
+          <span class="text-slate-400 block">Tim Pemotong & Operator:</span>
+          <span id="display-workers" class="text-slate-600">
+            {{ (shipment.cutter_names ~ ' &bull; ' ~ shipment.operator_names) if shipment else '' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- STEP 1: FORM KEBERANGKATAN WORKSHOP (DRAFT)     -->
+    <!-- ============================================== -->
+    <form id="form-departure" class="p-5 space-y-4 {% if shipment and shipment.status != 'DRAFT' %}hidden{% endif %}">
+      <input type="hidden" id="dep-shipment-id" name="shipment_id" value="{{ shipment.id if shipment else '' }}">
+      
+      <div class="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-r-xl">
+        <h3 class="text-xs font-bold text-amber-900 uppercase">Langkah 1: Keberangkatan dari Workshop</h3>
+        <p class="text-xs text-amber-700 mt-0.5">
+          Driver wajib melampirkan <strong>Foto Woodchip di bak truk</strong> sebagai bukti visual muatan sebelum jalan ke PLTU.
+        </p>
+      </div>
+
+      <!-- Photo Upload with Native Mobile Camera Capture -->
+      <div class="space-y-1.5">
+        <label class="block text-xs font-bold text-slate-700">
+          Foto Muatan Woodchip di Bak Truk <span class="text-rose-500">* (Wajib)</span>
+        </label>
+        <div class="relative border-2 border-dashed border-emerald-300 rounded-xl p-4 bg-emerald-50/40 text-center hover:bg-emerald-50 transition-colors">
+          <input type="file" id="dep-photo-woodchip" name="photo_woodchip" accept="image/*" capture="environment" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+          <div id="dep-photo-preview-placeholder" class="space-y-1 pointer-events-none">
+            <div class="w-10 h-10 mx-auto rounded-full bg-emerald-100 text-brand-600 flex items-center justify-center">
+              <i data-lucide="camera" class="w-5 h-5"></i>
+            </div>
+            <div class="text-xs font-bold text-brand-800">Tekan untuk Buka Kamera / Pilih Foto</div>
+            <div class="text-[11px] text-slate-500">Ambil foto jelas dari atas bak truk yang penuh woodchip</div>
+          </div>
+          <img id="dep-photo-preview" class="hidden mx-auto max-h-48 rounded-lg shadow object-cover">
+        </div>
+      </div>
+
+      <!-- Optional Departure Weight -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-600">Bruto Workshop (kg)</label>
+          <input type="number" id="dep-gross" name="departure_gross_kg" value="{{ shipment.departure_gross_kg if shipment else '' }}" placeholder="Contoh: 21500" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-600">Tara Kosong (kg)</label>
+          <input type="number" id="dep-tare" name="departure_tare_kg" value="{{ shipment.departure_tare_kg if shipment else '' }}" placeholder="Contoh: 8200" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-600">Catatan Driver (Opsional)</label>
+        <input type="text" name="notes" placeholder="Kondisi cuaca, rute, dll" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300">
+      </div>
+
+      <button type="submit" id="btn-submit-dep" class="w-full py-3 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-brand-500/30 flex items-center justify-center gap-2 transition-all">
+        <i data-lucide="send" class="w-4 h-4"></i>
+        Konfirmasi Muat & Mulai Perjalanan
+      </button>
+    </form>
+
+    <!-- ============================================== -->
+    <!-- STEP 2: FORM KEDATANGAN & TIMBANG PLTU (IN_TRANSIT) -->
+    <!-- ============================================== -->
+    <form id="form-arrival" class="p-5 space-y-4 {% if not shipment or shipment.status != 'IN_TRANSIT' %}hidden{% endif %}">
+      <input type="hidden" id="arr-shipment-id" name="shipment_id" value="{{ shipment.id if shipment else '' }}">
+
+      <div class="bg-emerald-50 border-l-4 border-brand-500 p-3 rounded-r-xl">
+        <h3 class="text-xs font-bold text-brand-900 uppercase">Langkah 2: Tiba di PLTU & Penimbangan Final</h3>
+        <p class="text-xs text-brand-800 mt-0.5">
+          Driver/Petugas scan QR kedatangan di PLTU. Masukkan hasil timbangan timbang resmi PLTU. Berdasarkan data ini upah Pemotong, Driver, & Operator akan otomatis dihitung!
+        </p>
+      </div>
+
+      <!-- Departure Photo Reference -->
+      {% if shipment and shipment.departure_photo_woodchip %}
+      <div class="bg-slate-100 p-3 rounded-xl flex items-center gap-3">
+        <img src="{{ shipment.departure_photo_woodchip }}" class="w-14 h-14 object-cover rounded-lg border border-slate-300">
+        <div class="text-xs">
+          <span class="font-bold text-slate-700 block">Foto Muat Workshop:</span>
+          <span class="text-slate-500 text-[11px]">Diverifikasi berangkat {{ shipment.departure_time }}</span>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Weighbridge Inputs -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700">
+            Bruto PLTU (kg) <span class="text-rose-500">*</span>
+          </label>
+          <input type="number" id="arr-gross" name="pltu_gross_kg" required placeholder="Contoh: 22420" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 font-mono font-bold focus:ring-2 focus:ring-brand-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700">
+            Tara PLTU (kg) <span class="text-rose-500">*</span>
+          </label>
+          <input type="number" id="arr-tare" name="pltu_tare_kg" required placeholder="Contoh: 8500" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 font-mono font-bold focus:ring-2 focus:ring-brand-500">
+        </div>
+      </div>
+
+      <!-- Calculated Net TON Box -->
+      <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-4 rounded-xl text-white text-center shadow-inner">
+        <span class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Hasil Netto Tonase PLTU (Acuan Upah)</span>
+        <div class="text-2xl sm:text-3xl font-black font-mono text-brand-400 mt-1">
+          <span id="arr-net-ton">0.000</span> <span class="text-base text-slate-300 font-sans">TON</span>
+        </div>
+        <div class="text-[11px] text-slate-400 mt-0.5">
+          (<span id="arr-net-kg">0</span> kg bersih diterima PLTU)
+        </div>
+      </div>
+
+      <!-- Photo Proof of PLTU Weighing Ticket -->
+      <div class="space-y-1.5">
+        <label class="block text-xs font-bold text-slate-700">
+          Foto Tiket Timbang PLTU / Bukti Bongkar <span class="text-rose-500">* (Wajib)</span>
+        </label>
+        <div class="relative border-2 border-dashed border-brand-400 rounded-xl p-4 bg-brand-50/40 text-center hover:bg-brand-50 transition-colors">
+          <input type="file" id="arr-photo-ticket" name="photo_weighing_pltu" accept="image/*" capture="environment" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+          <div id="arr-photo-preview-placeholder" class="space-y-1 pointer-events-none">
+            <div class="w-10 h-10 mx-auto rounded-full bg-brand-100 text-brand-700 flex items-center justify-center">
+              <i data-lucide="camera" class="w-5 h-5"></i>
+            </div>
+            <div class="text-xs font-bold text-brand-900">Tekan untuk Foto Tiket Timbang PLTU</div>
+            <div class="text-[11px] text-slate-500">Pastikan angka tonase dan nomor plat terlihat jelas</div>
+          </div>
+          <img id="arr-photo-preview" class="hidden mx-auto max-h-48 rounded-lg shadow object-cover">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-600">Catatan PLTU (Hopper, Kadar Air, dll)</label>
+        <input type="text" name="pltu_notes" placeholder="Misal: Hopper #2, woodchip kering bagus" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300">
+      </div>
+
+      <button type="submit" id="btn-submit-arr" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all">
+        <i data-lucide="scale" class="w-4 h-4"></i>
+        Konfirmasi Tiba & Selesaikan Pengiriman
+      </button>
+    </form>
+
+    <!-- ============================================== -->
+    <!-- STEP 3: STATUS SELESAI / SUMMARY                -->
+    <!-- ============================================== -->
+    <div id="summary-completed" class="p-5 space-y-4 {% if not shipment or (shipment.status != 'ARRIVED_PLTU' and shipment.status != 'SETTLED') %}hidden{% endif %}">
+      <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center space-y-2">
+        <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+          <i data-lucide="check-circle" class="w-7 h-7"></i>
+        </div>
+        <h3 class="font-extrabold text-emerald-900 text-base">Pengiriman Selesai di PLTU</h3>
+        <p class="text-xs text-emerald-700">
+          Truk telah ditimbang di PLTU dengan total <strong class="text-emerald-900 text-sm">{{ shipment.pltu_net_ton|num if shipment else '' }} TON</strong>. Upah pekerja telah otomatis dihitung dan masuk ke antrean pembayaran keuangan.
+        </p>
+      </div>
+
+      <div class="flex gap-2">
+        <a id="link-view-detail" href="/shipments/{{ shipment.id if shipment else '' }}" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-center font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow">
+          <i data-lucide="file-text" class="w-4 h-4"></i> Lihat Rincian Upah Lengkap
+        </a>
+        <button onclick="resetScanner()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1">
+          <i data-lucide="scan" class="w-4 h-4"></i> Scan Lagi
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let html5QrCode = null;
+  let currentCameraFacing = "environment"; // Back camera by default for barcode scanning
+  let currentShipment = null;
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+
+    const initialCode = document.getElementById('manual-code-input').value.trim();
+    if (initialCode) {
+      lookupShipment(initialCode);
+    } else {
+      startQrScanner();
+    }
+  });
+
+  // Start HTML5 QR Scanner
+  function startQrScanner() {
+    const qrRegion = document.getElementById('qr-reader');
+    const placeholder = document.getElementById('scanner-placeholder');
+
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("qr-reader");
+    }
+
+    placeholder.classList.add('hidden');
+
+    html5QrCode.start(
+      { facingMode: currentCameraFacing },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+      },
+      (decodedText, decodedResult) => {
+        // Success callback
+        console.log("QR scanned:", decodedText);
+        showToast("QR Terdeteksi: " + decodedText);
+        stopQrScanner();
+        document.getElementById('manual-code-input').value = decodedText;
+        lookupShipment(decodedText);
+      },
+      (errorMessage) => {
+        // scan error / waiting for QR
+      }
+    ).catch(err => {
+      console.warn("Camera start error:", err);
+      placeholder.classList.remove('hidden');
+      document.getElementById('btn-start-scanner').innerText = "Gagal Akses Kamera (Coba Lagi)";
+    });
+  }
+
+  function stopQrScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
+      html5QrCode.stop().then(() => {
+        document.getElementById('scanner-placeholder').classList.remove('hidden');
+      }).catch(e => console.error(e));
+    }
+  }
+
+  document.getElementById('btn-start-scanner').addEventListener('click', startQrScanner);
+
+  document.getElementById('btn-toggle-camera').addEventListener('click', () => {
+    currentCameraFacing = currentCameraFacing === "environment" ? "user" : "environment";
+    if (html5QrCode && html5QrCode.isScanning) {
+      html5QrCode.stop().then(() => {
+        startQrScanner();
+      });
+    } else {
+      startQrScanner();
+    }
+  });
+
+  // Scan from file input
+  document.getElementById('qr-file-input').addEventListener('change', e => {
+    if (e.target.files.length === 0) return;
+    const imageFile = e.target.files[0];
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("qr-reader");
+    }
+    html5QrCode.scanFile(imageFile, true)
+      .then(decodedText => {
+        showToast("QR Terbaca dari Gambar: " + decodedText);
+        document.getElementById('manual-code-input').value = decodedText;
+        lookupShipment(decodedText);
+      })
+      .catch(err => {
+        showToast("Tidak dapat menemukan QR barcode pada gambar ini", true);
+      });
+  });
+
+  // Lookup manual button
+  document.getElementById('btn-lookup-manual').addEventListener('click', () => {
+    const code = document.getElementById('manual-code-input').value.trim();
+    if (!code) {
+      showToast("Masukkan kode Surat Jalan terlebih dahulu", true);
+      return;
+    }
+    lookupShipment(code);
+  });
+
+  // Fetch shipment data by code
+  function lookupShipment(code) {
+    document.getElementById('loading-spinner').classList.remove('hidden');
+    document.getElementById('shipment-action-card').classList.add('hidden');
+
+    fetch(`/api/shipments/lookup?code=${encodeURIComponent(code)}`)
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('loading-spinner').classList.add('hidden');
+        if (!data.success) {
+          showToast(data.message || "Surat Jalan tidak ditemukan", true);
+          return;
+        }
+        currentShipment = data.shipment;
+        renderShipmentCard(currentShipment);
+      })
+      .catch(err => {
+        document.getElementById('loading-spinner').classList.add('hidden');
+        showToast("Terjadi kesalahan jaringan", true);
+      });
+  }
+
+  // Render Card details based on status
+  function renderShipmentCard(s) {
+    document.getElementById('shipment-action-card').classList.remove('hidden');
+    document.getElementById('display-sj-code').innerText = s.shipment_code;
+    document.getElementById('display-driver-name').innerText = s.driver_name;
+    document.getElementById('display-truck-plate').innerText = s.truck_plate;
+    document.getElementById('display-destination').innerText = s.destination_pltu;
+    document.getElementById('display-workers').innerHTML = `${s.cutter_names || '-'} &bull; ${s.operator_names || '-'}`;
+    
+    // IDs for forms
+    document.getElementById('dep-shipment-id').value = s.id;
+    document.getElementById('arr-shipment-id').value = s.id;
+    document.getElementById('link-view-detail').href = `/shipments/${s.id}`;
+
+    const badgeContainer = document.getElementById('display-status-badge');
+    const formDep = document.getElementById('form-departure');
+    const formArr = document.getElementById('form-arrival');
+    const summaryComp = document.getElementById('summary-completed');
+
+    formDep.classList.add('hidden');
+    formArr.classList.add('hidden');
+    summaryComp.classList.add('hidden');
+
+    if (s.status === 'DRAFT') {
+      badgeContainer.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-200 border border-slate-600">Siap Muat</span>';
+      formDep.classList.remove('hidden');
+      if (s.departure_gross_kg) document.getElementById('dep-gross').value = s.departure_gross_kg;
+      if (s.departure_tare_kg) document.getElementById('dep-tare').value = s.departure_tare_kg;
+    } else if (s.status === 'IN_TRANSIT') {
+      badgeContainer.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white animate-pulse">Di Jalan ke PLTU</span>';
+      formArr.classList.remove('hidden');
+      // If truck tare was recorded at departure, preset it in PLTU tare
+      if (s.departure_tare_kg && !document.getElementById('arr-tare').value) {
+        document.getElementById('arr-tare').value = s.departure_tare_kg;
+      }
+    } else {
+      badgeContainer.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white">Selesai / Tiba</span>';
+      summaryComp.classList.remove('hidden');
+    }
+
+    lucide.createIcons();
+    // Smooth scroll into view
+    document.getElementById('shipment-action-card').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Live calculation of PLTU Net Ton
+  function calcArrNet() {
+    const gross = parseFloat(document.getElementById('arr-gross').value) || 0;
+    const tare = parseFloat(document.getElementById('arr-tare').value) || 0;
+    const netKg = Math.max(0, gross - tare);
+    const netTon = (netKg / 1000).toFixed(3);
+
+    document.getElementById('arr-net-kg').innerText = netKg.toLocaleString('id-ID');
+    document.getElementById('arr-net-ton').innerText = netTon.replace('.', ',');
+  }
+  document.getElementById('arr-gross').addEventListener('input', calcArrNet);
+  document.getElementById('arr-tare').addEventListener('input', calcArrNet);
+
+  // Photo Preview Handlers
+  document.getElementById('dep-photo-woodchip').addEventListener('change', e => {
+    previewImage(e.target, 'dep-photo-preview', 'dep-photo-preview-placeholder');
+  });
+  document.getElementById('arr-photo-ticket').addEventListener('change', e => {
+    previewImage(e.target, 'arr-photo-preview', 'arr-photo-preview-placeholder');
+  });
+
+  function previewImage(input, imgId, placeholderId) {
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = document.getElementById(imgId);
+        img.src = e.target.result;
+        img.classList.remove('hidden');
+        document.getElementById(placeholderId).classList.add('hidden');
+      }
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  // Handle Form 1: Departure Submission
+  document.getElementById('form-departure').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-dep');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block mr-2">&#9696;</span> Memproses...';
+
+    const formData = new FormData(this);
+    fetch('/api/shipments/confirm-departure', {
+      method: 'POST',
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Konfirmasi Muat & Mulai Perjalanan';
+      lucide.createIcons();
+
+      if (data.success) {
+        showToast(data.message);
+        // Refresh shipment data
+        lookupShipment(currentShipment.shipment_code);
+      } else {
+        showToast(data.message || "Gagal mengonfirmasi keberangkatan", true);
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      showToast("Terjadi kesalahan koneksi", true);
+    });
+  });
+
+  // Handle Form 2: Arrival Submission
+  document.getElementById('form-arrival').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-arr');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block mr-2">&#9696;</span> Memproses & Menghitung Upah...';
+
+    const formData = new FormData(this);
+    fetch('/api/shipments/confirm-arrival', {
+      method: 'POST',
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="scale" class="w-4 h-4"></i> Konfirmasi Tiba & Selesaikan Pengiriman';
+      lucide.createIcons();
+
+      if (data.success) {
+        showToast(data.message);
+        lookupShipment(currentShipment.shipment_code);
+      } else {
+        showToast(data.message || "Gagal mengonfirmasi kedatangan", true);
+      }
+    })
+    .catch(err => {
+      btn.disabled = false;
+      showToast("Terjadi kesalahan koneksi", true);
+    });
+  });
+
+  function resetScanner() {
+    currentShipment = null;
+    document.getElementById('shipment-action-card').classList.add('hidden');
+    document.getElementById('manual-code-input').value = '';
+    startQrScanner();
+  }
+</script>
+{% endblock %}

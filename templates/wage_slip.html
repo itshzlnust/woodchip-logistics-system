@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Slip Upah - {{ item.recipient_name }} - {{ item.shipment_code }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      body { margin: 0; padding: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 p-4 sm:p-8 flex justify-center text-slate-900 font-sans">
+
+  <div class="bg-white border border-slate-300 rounded-xl p-6 sm:p-8 max-w-md w-full shadow-lg">
+    
+    <!-- Top Action for Print -->
+    <div class="no-print flex justify-between items-center mb-6 pb-3 border-b border-slate-200">
+      <a href="/finance?tab=wages" class="text-xs font-semibold text-slate-600 hover:text-slate-900">&larr; Kembali ke Keuangan</a>
+      <button onclick="window.print()" class="px-4 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold shadow hover:bg-slate-800">
+        Cetak Slip Upah
+      </button>
+    </div>
+
+    <!-- Header -->
+    <div class="text-center border-b-2 border-slate-900 pb-3">
+      <h1 class="text-lg font-black uppercase tracking-wider text-slate-900">SLIP PEMBAYARAN UPAH KERJA</h1>
+      <p class="text-[11px] text-slate-500">Logistik Woodchip &bull; Pengiriman PLTU</p>
+    </div>
+
+    <!-- Worker & Shipment Info -->
+    <div class="my-4 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+      <div class="flex justify-between">
+        <span class="text-slate-500">Nama Pekerja:</span>
+        <span class="font-bold text-slate-900 text-sm">{{ item.recipient_name }}</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-500">Peran / Jabatan:</span>
+        <span class="font-semibold text-brand-700 uppercase font-mono">
+          {% if item.role == 'pemotong' %}Pemotong Kayu
+          {% elif item.role == 'driver' %}Driver Truk
+          {% elif item.role == 'operator' %}Operator Mesin
+          {% else %}{{ item.role }}{% endif %}
+        </span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-500">No. Surat Jalan:</span>
+        <span class="font-mono font-bold text-slate-800">{{ item.shipment_code }}</span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-slate-500">Truk & Tujuan:</span>
+        <span class="text-slate-700">{{ item.truck_plate }} &bull; {{ item.destination_pltu }}</span>
+      </div>
+    </div>
+
+    <!-- Wage Calculation Formula -->
+    <div class="border border-slate-200 rounded-xl p-4 space-y-2 text-xs">
+      <div class="flex justify-between text-slate-600">
+        <span>Dasar Tonase Timbang PLTU:</span>
+        <span class="font-mono font-bold text-slate-800">{{ item.ton_basis|num }} TON</span>
+      </div>
+      <div class="flex justify-between text-slate-600">
+        <span>Tarif Upah per TON:</span>
+        <span class="font-mono">{{ item.rate_per_ton|rupiah }} / TON</span>
+      </div>
+      <div class="border-t border-slate-200 pt-2 flex justify-between items-center text-sm font-black text-slate-900">
+        <span>Total Upah Diterima:</span>
+        <span class="text-brand-700 font-mono text-base">{{ item.amount_due|rupiah }}</span>
+      </div>
+    </div>
+
+    <!-- Bank Details & Payment Status -->
+    <div class="mt-4 p-3 rounded-xl border border-slate-200 text-xs space-y-1 bg-slate-50">
+      <span class="text-[10px] font-bold text-slate-400 uppercase block">Rekening Pembayaran:</span>
+      <div class="font-bold text-slate-800">{{ item.bank_name }} - <span class="font-mono">{{ item.account_number }}</span></div>
+      <div class="text-[11px] text-slate-500">a.n. {{ item.account_holder }}</div>
+      
+      <div class="mt-2 pt-2 border-t border-slate-200 flex justify-between items-center">
+        <span class="text-slate-500">Status Transfer:</span>
+        {% if item.payment_status == 'PAID' %}
+          <span class="font-bold text-emerald-700">LUNAS ({{ item.payment_date or 'Ditransfer' }})</span>
+        {% else %}
+          <span class="font-bold text-rose-600">PENDING</span>
+        {% endif %}
+      </div>
+      {% if item.payment_reference %}
+      <div class="text-[10px] text-slate-400 font-mono">Ref: {{ item.payment_reference }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Signatures -->
+    <div class="grid grid-cols-2 gap-6 mt-8 pt-4 text-center text-xs text-slate-600">
+      <div>
+        <p>Bagian Keuangan,</p>
+        <div class="h-14"></div>
+        <p class="font-bold border-t border-slate-400 pt-1 text-slate-800">( Kasir / Finance )</p>
+      </div>
+      <div>
+        <p>Penerima Upah,</p>
+        <div class="h-14"></div>
+        <p class="font-bold border-t border-slate-400 pt-1 text-slate-800">( {{ item.recipient_name }} )</p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

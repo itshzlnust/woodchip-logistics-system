@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Surat Jalan Pengiriman Woodchip ke PLTU{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <i data-lucide="truck" class="w-6 h-6 text-brand-600"></i>
+        Surat Jalan Pengiriman Woodchip ke PLTU
+      </h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Pemberangkatan armada woodchip, barcode QR, dan verifikasi timbangan PLTU untuk penentuan upah pekerja.
+      </p>
+    </div>
+    <div>
+      <button onclick="toggleShipmentForm()" class="px-4 py-2.5 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i> Buat Surat Jalan Baru
+      </button>
+    </div>
+  </div>
+
+  <!-- Form Buat Surat Jalan Baru (Collapsible) -->
+  <div id="shipment-form-card" class="hidden bg-white rounded-2xl border border-slate-200 shadow-md p-6 space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center">
+          <i data-lucide="file-plus-2" class="w-4 h-4"></i>
+        </div>
+        <h2 class="font-bold text-slate-900 text-sm">Formulir Pembuatan Surat Jalan PLTU</h2>
+      </div>
+      <button type="button" onclick="toggleShipmentForm()" class="text-slate-400 hover:text-slate-600 text-xs font-semibold">
+        Tutup
+      </button>
+    </div>
+
+    <form action="/shipments/create" method="POST" class="space-y-5">
+      
+      <!-- Row 1: Driver, Truk, Tujuan PLTU -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Supir / Driver Pengantar <span class="text-rose-500">*</span>
+          </label>
+          <select name="driver_id" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white">
+            <option value="">-- Pilih Supir --</option>
+            {% for d in drivers %}
+            <option value="{{ d.id }}">{{ d.name }} ({{ d.bank_name }}: {{ d.account_number }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Nomor Polisi Truk <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" name="truck_plate" required placeholder="Contoh: BA 8821 QU" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-mono uppercase font-bold text-slate-800">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Tujuan Pembangkit Listrik (PLTU) <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" name="destination_pltu" value="PLTU Tenayan Raya 2x110MW" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+        </div>
+      </div>
+
+      <!-- Row 2: Penugasan Tim Pemotong Kayu & Operator Mesin -->
+      <div class="pt-4 border-t border-slate-100 bg-slate-50/70 -mx-6 px-6 py-4 rounded-xl space-y-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="users" class="w-4 h-4 text-brand-600"></i>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Penugasan Pekerja yang Berhak Menerima Upah</h3>
+        </div>
+        <p class="text-[11px] text-slate-500">
+          Centang pekerja yang terlibat dalam pemotongan kayu dan proses operasional muatan ini. Upah akan dihitung otomatis sesuai tonase timbang PLTU.
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          
+          <!-- Pemotong Kayu -->
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <i data-lucide="axe" class="w-3.5 h-3.5 text-wood-600"></i> Pemotong Kayu (Cutter)
+              </span>
+              <span class="text-[10px] text-slate-400">Tarif: {{ rates.rate_cutter_per_ton|rupiah }}/TON</span>
+            </div>
+            <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              {% for c in cutters %}
+              <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs">
+                <input type="checkbox" name="cutter_worker_ids" value="{{ c.id }}" class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4" {% if loop.first %}checked{% endif %}>
+                <span class="font-semibold text-slate-700">{{ c.name }}</span>
+                <span class="text-[11px] text-slate-400 ml-auto font-mono">{{ c.bank_name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Operator Mesin Chipper / Loader -->
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <i data-lucide="cog" class="w-3.5 h-3.5 text-brand-600"></i> Operator Mesin / Alat
+              </span>
+              <span class="text-[10px] text-slate-400">Tarif: {{ rates.rate_operator_per_ton|rupiah }}/TON</span>
+            </div>
+            <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              {% for op in operators %}
+              <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs">
+                <input type="checkbox" name="operator_worker_ids" value="{{ op.id }}" class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4" {% if loop.first %}checked{% endif %}>
+                <span class="font-semibold text-slate-700">{{ op.name }}</span>
+                <span class="text-[11px] text-slate-400 ml-auto font-mono">{{ op.bank_name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Row 3: Referensi Pemasok & Timbangan Awal Workshop -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Asal Pemasok Kayu (Opsional)
+          </label>
+          <select name="supplier_id" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white">
+            <option value="">-- Tidak Terikat Pemasok Tertentu --</option>
+            {% for sup in suppliers %}
+            <option value="{{ sup.id }}">{{ sup.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Estimasi Bruto Workshop (kg)
+          </label>
+          <input type="number" name="departure_gross_kg" placeholder="Contoh: 21500" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-mono">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Estimasi Tara Workshop (kg)
+          </label>
+          <input type="number" name="departure_tare_kg" placeholder="Contoh: 8200" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-mono">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Instruksi Khusus / Catatan Perjalanan</label>
+        <input type="text" name="departure_notes" placeholder="Contoh: Woodchip disaring grade 2, target tiba sebelum jam 14:00" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="toggleShipmentForm()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl">
+          Batal
+        </button>
+        <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2">
+          <i data-lucide="qr-code" class="w-4 h-4"></i> Terbitkan Surat Jalan & Generate QR
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Daftar Surat Jalan -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div class="flex items-center gap-2">
+        <i data-lucide="clipboard-list" class="w-5 h-5 text-slate-600"></i>
+        <h2 class="font-bold text-slate-900 text-base">Daftar Pengiriman Woodchip ke PLTU</h2>
+      </div>
+      <span class="text-xs text-slate-500 font-medium">{{ shipments|length }} Surat Jalan</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm divide-y divide-slate-100">
+        <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+          <tr>
+            <th class="px-5 py-3">Surat Jalan / QR</th>
+            <th class="px-4 py-3">Driver & Truk</th>
+            <th class="px-4 py-3">Tim Pekerja</th>
+            <th class="px-4 py-3 text-center">Status</th>
+            <th class="px-4 py-3 text-right">Tonase PLTU</th>
+            <th class="px-4 py-3 text-right">Total Upah</th>
+            <th class="px-4 py-3 text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for s in shipments %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            
+            <!-- Surat Jalan & QR Thumbnail -->
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-3">
+                {% if s.qr_code_path %}
+                <a href="/scanner?code={{ s.shipment_code }}" title="Scan QR Code ini">
+                  <img src="{{ s.qr_code_path }}" class="w-12 h-12 rounded-lg border border-slate-200 p-0.5 bg-white shadow-sm hover:scale-105 transition-transform">
+                </a>
+                {% endif %}
+                <div>
+                  <a href="/shipments/{{ s.id }}" class="font-bold font-mono text-slate-900 hover:text-brand-600 text-xs">
+                    {{ s.shipment_code }}
+                  </a>
+                  <div class="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                    <i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i>
+                    {{ s.destination_pltu }}
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Driver & Truk -->
+            <td class="px-4 py-4">
+              <div class="font-bold text-slate-800">{{ s.driver_name }}</div>
+              <div class="inline-block mt-0.5 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-mono font-bold">
+                {{ s.truck_plate }}
+              </div>
+            </td>
+
+            <!-- Tim Pekerja -->
+            <td class="px-4 py-4">
+              <div class="text-xs space-y-1">
+                <div class="text-slate-600 flex items-center gap-1">
+                  <span class="text-[10px] font-bold text-wood-700 uppercase">Potong:</span>
+                  <span>{{ s.cutter_names or '-' }}</span>
+                </div>
+                <div class="text-slate-600 flex items-center gap-1">
+                  <span class="text-[10px] font-bold text-brand-700 uppercase">Operator:</span>
+                  <span>{{ s.operator_names or '-' }}</span>
+                </div>
+              </div>
+            </td>
+
+            <!-- Status -->
+            <td class="px-4 py-4 text-center">
+              {% if s.status == 'DRAFT' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Siap Muat
+                </span>
+              {% elif s.status == 'IN_TRANSIT' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Di Jalan
+                </span>
+              {% elif s.status == 'ARRIVED_PLTU' or s.status == 'SETTLED' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <i data-lucide="check" class="w-3 h-3 text-emerald-600"></i> Selesai di PLTU
+                </span>
+              {% endif %}
+            </td>
+
+            <!-- Tonase PLTU -->
+            <td class="px-4 py-4 text-right">
+              {% if s.pltu_net_ton and s.pltu_net_ton > 0 %}
+                <div class="font-bold text-slate-900 text-sm">{{ s.pltu_net_ton|num }} TON</div>
+                <div class="text-[10px] text-emerald-600 font-semibold">Timbangan PLTU</div>
+              {% else %}
+                <div class="font-semibold text-slate-400 text-xs">{{ s.departure_net_ton|num }} TON</div>
+                <div class="text-[10px] text-slate-400">Est. Workshop</div>
+              {% endif %}
+            </td>
+
+            <!-- Total Upah -->
+            <td class="px-4 py-4 text-right">
+              {% if s.total_operational_wage and s.total_operational_wage > 0 %}
+                <div class="font-black text-brand-700">{{ s.total_operational_wage|rupiah }}</div>
+                <div class="text-[10px] text-slate-400">Pemotong + Supir + Operator</div>
+              {% else %}
+                <span class="text-xs text-slate-400 italic">Menunggu Timbang</span>
+              {% endif %}
+            </td>
+
+            <!-- Aksi -->
+            <td class="px-4 py-4 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <a href="/shipments/{{ s.id }}" class="p-2 text-slate-600 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Lihat Detail & Breakdown Upah">
+                  <i data-lucide="eye" class="w-4 h-4"></i>
+                </a>
+                <a href="/shipments/{{ s.id }}/print" target="_blank" class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="Cetak Surat Jalan & QR">
+                  <i data-lucide="printer" class="w-4 h-4"></i>
+                </a>
+                <a href="/scanner?code={{ s.shipment_code }}" class="p-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Buka Scanner Driver">
+                  <i data-lucide="scan" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </td>
+
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+              Belum ada Surat Jalan dibuat.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function toggleShipmentForm() {
+    const el = document.getElementById('shipment-form-card');
+    el.classList.toggle('hidden');
+    if (!el.classList.contains('hidden')) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+</script>
+{% endblock %}

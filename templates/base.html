@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{% block title %}Sistem Woodchip & Logistik PLTU{% endblock %}</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            },
+            wood: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+              900: '#78350f',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- HTML5 QR Code Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white !important; }
+    }
+    .tap-target { min-height: 44px; min-width: 44px; }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Desktop & Mobile Header -->
+  <header class="no-print sticky top-0 z-30 bg-slate-900 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo & Title -->
+        <div class="flex items-center gap-3">
+          <a href="/dashboard" class="flex items-center gap-3 group">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-wood-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform">
+              <i data-lucide="trees" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <span class="font-bold text-lg tracking-tight text-white flex items-center gap-1.5">
+                WOODCHIP<span class="text-brand-400 font-black">LOG</span>
+              </span>
+              <span class="block text-[11px] text-slate-400 font-medium">Workshop &bull; PLTU &bull; Payroll</span>
+            </div>
+          </a>
+        </div>
+
+        <!-- Desktop Nav -->
+        <nav class="hidden md:flex items-center gap-1">
+          <a href="/dashboard" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'dashboard' %}bg-slate-800 text-brand-400 font-semibold{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %} flex items-center gap-2">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+          </a>
+          <a href="/scanner" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'scanner' %}bg-brand-600 text-white font-semibold shadow-lg shadow-brand-600/30{% else %}text-emerald-300 hover:text-white hover:bg-emerald-900/40 border border-emerald-500/30{% endif %} flex items-center gap-2">
+            <i data-lucide="qr-code" class="w-4 h-4"></i> Scan QR Driver
+          </a>
+          <a href="/inbound" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'inbound' %}bg-slate-800 text-brand-400 font-semibold{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %} flex items-center gap-2">
+            <i data-lucide="package-plus" class="w-4 h-4"></i> Pemasok (Masuk)
+          </a>
+          <a href="/shipments" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'shipments' %}bg-slate-800 text-brand-400 font-semibold{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %} flex items-center gap-2">
+            <i data-lucide="truck" class="w-4 h-4"></i> Pengiriman PLTU
+          </a>
+          <a href="/finance" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'finance' %}bg-slate-800 text-brand-400 font-semibold{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %} flex items-center gap-2">
+            <i data-lucide="wallet" class="w-4 h-4"></i> Keuangan & Upah
+          </a>
+          <a href="/master" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors {% if active_page == 'master' %}bg-slate-800 text-brand-400 font-semibold{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %} flex items-center gap-2">
+            <i data-lucide="settings" class="w-4 h-4"></i> Tarif & Data
+          </a>
+        </nav>
+
+        <!-- Right Quick Actions -->
+        <div class="flex items-center gap-2">
+          <a href="/scanner" class="md:hidden flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white rounded-lg text-xs font-bold shadow-md shadow-brand-600/30">
+            <i data-lucide="scan-line" class="w-4 h-4"></i> SCAN
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="flex-1 pb-20 md:pb-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar (App-Like Experience on Phones) -->
+  <nav class="no-print md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-2xl py-1 px-2 flex justify-around items-center">
+    <a href="/dashboard" class="flex flex-col items-center py-1.5 px-2 text-xs font-medium {% if active_page == 'dashboard' %}text-brand-600 font-bold{% else %}text-slate-500 hover:text-slate-900{% endif %}">
+      <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i>
+      <span>Home</span>
+    </a>
+    <a href="/inbound" class="flex flex-col items-center py-1.5 px-2 text-xs font-medium {% if active_page == 'inbound' %}text-brand-600 font-bold{% else %}text-slate-500 hover:text-slate-900{% endif %}">
+      <i data-lucide="package-plus" class="w-5 h-5 mb-0.5"></i>
+      <span>Pemasok</span>
+    </a>
+    <!-- Prominent Center QR Button for Drivers -->
+    <a href="/scanner" class="flex flex-col items-center -mt-5 bg-gradient-to-tr from-brand-600 to-emerald-500 text-white rounded-full p-3.5 shadow-xl shadow-brand-500/40 border-4 border-white">
+      <i data-lucide="qr-code" class="w-6 h-6"></i>
+    </a>
+    <a href="/shipments" class="flex flex-col items-center py-1.5 px-2 text-xs font-medium {% if active_page == 'shipments' %}text-brand-600 font-bold{% else %}text-slate-500 hover:text-slate-900{% endif %}">
+      <i data-lucide="truck" class="w-5 h-5 mb-0.5"></i>
+      <span>PLTU</span>
+    </a>
+    <a href="/finance" class="flex flex-col items-center py-1.5 px-2 text-xs font-medium {% if active_page == 'finance' %}text-brand-600 font-bold{% else %}text-slate-500 hover:text-slate-900{% endif %}">
+      <i data-lucide="wallet" class="w-5 h-5 mb-0.5"></i>
+      <span>Upah</span>
+    </a>
+  </nav>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="fixed top-20 right-4 z-50 transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none max-w-sm w-full bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700">
+    <div id="toast-icon" class="text-brand-400">
+      <i data-lucide="check-circle" class="w-5 h-5"></i>
+    </div>
+    <div id="toast-msg" class="text-sm font-medium">Notifikasi</div>
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Global copy to clipboard function with toast feedback
+    function copyText(text, label = 'Nomor rekening') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`Berhasil disalin: ${text}`);
+      }).catch(err => {
+        // Fallback
+        const el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showToast(`Berhasil disalin: ${text}`);
+      });
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+      
+      toastMsg.innerText = msg;
+      if (isError) {
+        toastIcon.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-rose-400"></i>';
+      } else {
+        toastIcon.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 text-brand-400"></i>';
+      }
+      lucide.createIcons();
+
+      toast.classList.remove('translate-y-[-150%]', 'opacity-0', 'pointer-events-none');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-[-150%]', 'opacity-0', 'pointer-events-none');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 3000);
+    }
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Operasional &bull; Woodchip Logistics{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Welcome / Header Banner -->
+  <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+    <div class="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center pr-10">
+      <i data-lucide="factory" class="w-72 h-72"></i>
+    </div>
+    <div class="relative z-10 max-w-2xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-brand-500/30">
+        <span class="w-2 h-2 rounded-full bg-brand-400 animate-pulse"></span>
+        Sistem Aktif & Terintegrasi
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+        Sistem Logistik Woodchip & Upah Pekerja
+      </h1>
+      <p class="mt-2 text-slate-300 text-sm sm:text-base leading-relaxed">
+        Pencatatan kayu masuk workshop, verifikasi Surat Jalan via QR Barcode & Foto muatan driver, serta penimbangan final PLTU untuk kalkulasi upah otomatis.
+      </p>
+
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <a href="/scanner" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-500 to-emerald-600 hover:from-brand-600 hover:to-emerald-700 text-white font-bold text-sm shadow-lg shadow-brand-500/30 transition-all hover:scale-[1.02]">
+          <i data-lucide="qr-code" class="w-4 h-4"></i>
+          Buka Scanner QR Driver
+        </a>
+        <a href="/shipments" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-sm backdrop-blur-sm border border-white/20 transition-all">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          Buat Surat Jalan PLTU
+        </a>
+        <a href="/inbound" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-wood-600/80 hover:bg-wood-600 text-white font-semibold text-sm transition-all">
+          <i data-lucide="scale" class="w-4 h-4"></i>
+          Timbang Kayu Pemasok
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Metrics Grid -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    
+    <!-- KPI 1: Woodchip Terkirim ke PLTU -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Terkirim ke PLTU</span>
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <i data-lucide="check-check" class="w-5 h-5"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="text-2xl sm:text-3xl font-black text-slate-900">
+          {{ delivered_summary.pltu_ton|num }} <span class="text-base font-semibold text-slate-500">TON</span>
+        </div>
+        <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
+          <span class="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">{{ delivered_summary.total_trips }} Ritase Selesai</span>
+          <span>Acuan Netto PLTU</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 2: Truk Sedang Dalam Perjalanan -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Dalam Perjalanan</span>
+        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+          <i data-lucide="truck" class="w-5 h-5 animate-pulse"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="text-2xl sm:text-3xl font-black text-amber-600">
+          {{ transit_count }} <span class="text-base font-semibold text-slate-500">Truk</span>
+        </div>
+        <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
+          <span class="font-bold text-slate-600">{{ draft_count }} Truk Draft / Siap</span>
+          <span>Menuju PLTU</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 3: Kayu Masuk dari Pemasok -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Kayu Masuk Workshop</span>
+        <div class="w-10 h-10 rounded-xl bg-orange-50 text-wood-600 flex items-center justify-center">
+          <i data-lucide="package-plus" class="w-5 h-5"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="text-2xl sm:text-3xl font-black text-slate-900">
+          {{ inbound_summary.total_ton|num }} <span class="text-base font-semibold text-slate-500">TON</span>
+        </div>
+        <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
+          <span class="font-bold text-slate-700">{{ inbound_summary.cnt }} Transaksi</span>
+          <span>Nilai: {{ inbound_summary.total_value|rupiah }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 4: Antrean Pembayaran Upah & Pemasok -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Pending Transfer</span>
+        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="text-xl sm:text-2xl font-black text-rose-600">
+          {{ (wage_pending.pending_amount + supplier_pending.pending_amount)|rupiah }}
+        </div>
+        <div class="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+          <span class="font-medium text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">{{ wage_pending.pending_cnt }} Upah</span>
+          <span class="font-medium text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">{{ supplier_pending.pending_cnt }} Pemasok</span>
+          <a href="/finance" class="text-brand-600 font-bold hover:underline ml-auto">Bayar &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Operational Sections Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left 2 Cols: Pengiriman Woodchip ke PLTU Terkini -->
+    <div class="lg:col-span-2 space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center">
+              <i data-lucide="truck" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="font-bold text-slate-900 text-base">Surat Jalan Woodchip ke PLTU</h2>
+              <p class="text-xs text-slate-500">Status perjalanan & hasil timbangan final PLTU</p>
+            </div>
+          </div>
+          <a href="/shipments" class="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1">
+            Lihat Semua <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </a>
+        </div>
+
+        <div class="divide-y divide-slate-100 overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+              <tr>
+                <th class="px-5 py-3">Surat Jalan</th>
+                <th class="px-4 py-3">Driver & Armada</th>
+                <th class="px-4 py-3 text-center">Status</th>
+                <th class="px-4 py-3 text-right">Tonase PLTU</th>
+                <th class="px-4 py-3 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for s in recent_shipments %}
+              <tr class="hover:bg-slate-50/70 transition-colors">
+                <td class="px-5 py-3.5">
+                  <div class="font-bold text-slate-900">{{ s.shipment_code }}</div>
+                  <div class="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                    <i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i> {{ s.destination_pltu }}
+                  </div>
+                </td>
+                <td class="px-4 py-3.5">
+                  <div class="font-semibold text-slate-800">{{ s.driver_name }}</div>
+                  <div class="inline-block mt-0.5 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-mono font-bold">
+                    {{ s.truck_plate }}
+                  </div>
+                </td>
+                <td class="px-4 py-3.5 text-center">
+                  {% if s.status == 'DRAFT' %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                      <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Siap Muat
+                    </span>
+                  {% elif s.status == 'IN_TRANSIT' %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Di Jalan
+                    </span>
+                  {% elif s.status == 'ARRIVED_PLTU' or s.status == 'SETTLED' %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <i data-lucide="check" class="w-3 h-3 text-emerald-600"></i> Tiba PLTU
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-3.5 text-right">
+                  {% if s.pltu_net_ton and s.pltu_net_ton > 0 %}
+                    <div class="font-bold text-slate-900">{{ s.pltu_net_ton|num }} TON</div>
+                    <div class="text-[11px] text-emerald-600 font-semibold">Timbang PLTU</div>
+                  {% else %}
+                    <div class="font-semibold text-slate-400">
+                      {{ s.departure_net_ton|num }} TON
+                    </div>
+                    <div class="text-[11px] text-slate-400">Est. Workshop</div>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-3.5 text-center">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <a href="/shipments/{{ s.id }}" class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Lihat Detail & Upah">
+                      <i data-lucide="eye" class="w-4 h-4"></i>
+                    </a>
+                    <a href="/scanner?code={{ s.shipment_code }}" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Buka di Scanner Driver">
+                      <i data-lucide="qr-code" class="w-4 h-4"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="px-6 py-8 text-center text-slate-400 text-sm">
+                  Belum ada Surat Jalan dibuat. Klik "Buat Surat Jalan PLTU" untuk memulai.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right 1 Col: Penerimaan Kayu Pemasok & Alur Cepat -->
+    <div class="space-y-6">
+
+      <!-- Card: Kayu Masuk dari Pemasok -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-orange-100 text-wood-700 flex items-center justify-center">
+              <i data-lucide="package-plus" class="w-4 h-4"></i>
+            </div>
+            <h2 class="font-bold text-slate-900 text-sm">Pemasok Masuk Workshop</h2>
+          </div>
+          <a href="/inbound" class="text-xs font-bold text-wood-600 hover:text-wood-700">Lihat Semua</a>
+        </div>
+
+        <div class="divide-y divide-slate-100">
+          {% for inb in recent_inbound %}
+          <div class="p-4 hover:bg-slate-50 transition-colors">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="font-bold text-slate-900 text-xs">{{ inb.supplier_name }}</div>
+                <div class="text-[11px] text-slate-500 mt-0.5">{{ inb.transaction_code }} &bull; <span class="font-mono font-bold">{{ inb.truck_plate }}</span></div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-slate-900 text-xs">{{ inb.net_ton|num }} TON</div>
+                <div class="text-[11px] font-semibold text-slate-600">{{ inb.total_amount|rupiah }}</div>
+              </div>
+            </div>
+            <div class="mt-2 flex items-center justify-between pt-2 border-t border-slate-50 text-xs">
+              <div class="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                <i data-lucide="credit-card" class="w-3 h-3 text-slate-400"></i>
+                <span>{{ inb.bank_name }}: <strong class="font-mono text-slate-700">{{ inb.account_number }}</strong></span>
+                <button onclick="copyText('{{ inb.account_number }}')" class="p-0.5 hover:text-brand-600" title="Salin Nomor Rekening">
+                  <i data-lucide="copy" class="w-3 h-3"></i>
+                </button>
+              </div>
+              <div>
+                {% if inb.payment_status == 'PAID' %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Lunas</span>
+                {% else %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">Pending</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="p-6 text-center text-slate-400 text-xs">
+            Belum ada transaksi kayu masuk dari pemasok.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Card: Panduan Alur Driver -->
+      <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-2xl p-5">
+        <div class="flex items-center gap-2 text-emerald-900 font-bold text-sm mb-3">
+          <i data-lucide="smartphone" class="w-5 h-5 text-brand-600"></i>
+          Alur Driver di Smartphone
+        </div>
+        <ol class="space-y-2.5 text-xs text-slate-700">
+          <li class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">1</span>
+            <div>
+              <strong>Muat di Workshop:</strong> Driver scan QR Surat Jalan & ambil foto muatan woodchip di bak truk.
+            </div>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">2</span>
+            <div>
+              <strong>Tiba di PLTU:</strong> Driver/Petugas scan QR kedatangan & input hasil penimbangan final (Netto TON PLTU).
+            </div>
+          </li>
+          <li class="flex items-start gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">3</span>
+            <div>
+              <strong>Kalkulasi Upah:</strong> Sistem langsung menghitung upah Pemotong, Driver & Operator sesuai tonase PLTU.
+            </div>
+          </li>
+        </ol>
+        <div class="mt-4 pt-3 border-t border-emerald-200/60 flex items-center justify-between">
+          <span class="text-[11px] text-emerald-800 font-medium">Buka Scanner di HP:</span>
+          <a href="/scanner" class="px-3 py-1.5 bg-brand-600 text-white font-bold text-xs rounded-lg shadow hover:bg-brand-700 flex items-center gap-1">
+            <i data-lucide="camera" class="w-3.5 h-3.5"></i> Buka Kamera
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
